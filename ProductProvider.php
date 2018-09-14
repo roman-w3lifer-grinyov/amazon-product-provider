@@ -4,164 +4,417 @@ namespace w3lifer\amazon;
 
 class ProductProvider
 {
-    private $data;
+    /**
+     * @var null|\SimpleXMLElement
+     */
+    private $simpleXMLElement;
 
     /**
-     * $data - single item node form amazon api response
-     * @param null $data
+     * @param null|\SimpleXMLElement $simpleXMLElement Example:
+     *                                                 $simpleXmlElement->Items->Item
      */
-    public function __construct($data = null)
+    public function __construct($simpleXMLElement = null)
     {
-        if ($data) {
-            $this->data = $data;
+        if ($simpleXMLElement) {
+            $this->simpleXMLElement = $simpleXMLElement;
         }
     }
 
-    public function setData($data)
+    /**
+     * @return string
+     */
+    public function getAmazonUrl()
     {
-        $this->data = $data;
-        return $this;
+        $url = '';
+
+        if ($asin = $this->getAsin()) {
+            $url = 'https://www.amazon.com/gp/product/' . $asin;
+        }
+
+        return $url;
     }
 
-    public function getPrice()
+    /**
+     * @return string
+     */
+    public function getAsin()
     {
-        $price = (isset($this->data->OfferSummary->LowestNewPrice->Amount[0]) ? (float)$this->data->OfferSummary->LowestNewPrice->Amount[0] : 0);
-        return $price/100;
+        $asin = '';
+
+        if (isset($this->simpleXMLElement->ItemAttributes->ASIN[0])) {
+            $asin =
+                (string)
+                    $this->simpleXMLElement->ItemAttributes->ASIN[0];
+        }
+
+        return $asin;
     }
 
+    /**
+     * @return string
+     */
     public function getBrand()
     {
-        return (string)($this->data->ItemAttributes->Brand[0] ?? '');
+        $brand = '';
+
+        if ($this->simpleXMLElement->ItemAttributes->Brand[0]) {
+            $brand =
+                (string) $this->simpleXMLElement->ItemAttributes->Brand[0];
+        }
+        return $brand;
     }
 
-    public function getSmallImage()
+    /**
+     * @return string
+     */
+    public function getColor()
     {
-        return (string)($this->data->SmallImage->URL[0] ?? '');
+        $color = '';
+
+        if (isset($this->simpleXMLElement->ItemAttributes->Color[0])) {
+            $color =
+                (string)
+                    $this->simpleXMLElement->ItemAttributes->Color[0];
+        }
+
+        return $color;
     }
 
-    public function getMediumImage()
-    {
-        return (string)($this->data->MediumImage->URL[0] ?? '');
+    /**
+     * @param int $numberOfItems
+     * @param int $numberOfCharacters
+     * @return string
+     */
+    public function getDescription(
+        $numberOfItems = 5,
+        $numberOfCharacters = 100
+    ) {
+        $description = '';
+
+        if (isset($this->simpleXMLElement->ItemAttributes->Feature)) {
+            $i = 0;
+            foreach (
+                $this->simpleXMLElement->ItemAttributes->Feature as
+                $key => $feature
+            ) {
+                if ($i < $numberOfItems) {
+                    $description .=
+                        '<li>' .
+                            substr($feature, 0, $numberOfCharacters) .
+                        '</li>';
+                }
+                $i++;
+            }
+        }
+
+        return $description;
     }
 
-    public function getLargeImage()
+    /**
+     * @return string
+     */
+    public function getEan()
     {
-        return (string)($this->data->LargeImage->URL[0] ?? '');
+        $ean = '';
+
+        if (isset($this->simpleXMLElement->ItemAttributes->EAN[0])) {
+            $ean =
+                (string)
+                    $this->simpleXMLElement->ItemAttributes->EAN[0];
+        }
+
+        return $ean;
+    }
+
+    /**
+     * @return string
+     */
+    public function getFormattedUps()
+    {
+        if ($upc = $this->getUpc()) {
+            return $upc;
+        } else if ($ean = $this->getEan()) {
+            return $ean;
+        } else if ($mpn = $this->getMpn()) {
+            return $mpn;
+        }
+        return '';
+    }
+
+    /**
+     * @return string
+     */
+    public function getModel()
+    {
+        $model = '';
+
+        if (isset($this->simpleXMLElement->ItemAttributes->Model[0])) {
+            $model =
+                (string)
+                    $this->simpleXMLElement->ItemAttributes->Model[0];
+        }
+
+        return $model;
+    }
+
+    /**
+     * @return string
+     */
+    public function getMpn()
+    {
+        $mpn = '';
+
+        if (isset($this->simpleXMLElement->ItemAttributes->MPN[0])) {
+            $mpn =
+                (string)
+                    $this->simpleXMLElement->ItemAttributes->MPN[0];
+        }
+
+        return $mpn;
+    }
+
+    /**
+     * @return float|int
+     */
+    public function getPrice()
+    {
+        $price = 0;
+
+        if (isset(
+            $this->simpleXMLElement->OfferSummary->LowestNewPrice->Amount[0])
+        ) {
+            $price =
+                (float)
+                    $this->simpleXMLElement->OfferSummary->LowestNewPrice->Amount[0];
+        }
+
+        return $price / 100;
+    }
+
+    /**
+     * @return string
+     */
+    public function getProductGroup()
+    {
+        $productGroup = '';
+
+        if (isset($this->simpleXMLElement->ItemAttributes->ProductGroup[0])) {
+            $productGroup =
+                (string)
+                    $this->simpleXMLElement->ItemAttributes->ProductGroup[0];
+        }
+
+        return $productGroup;
+    }
+
+    /**
+     * @return string
+     */
+    public function getPublisher()
+    {
+        $publisher = '';
+
+        if (isset($this->simpleXMLElement->ItemAttributes->Publisher[0])) {
+            $publisher =
+                (string)
+                    $this->simpleXMLElement->ItemAttributes->Publisher[0];
+        }
+
+        return $publisher;
+    }
+
+    /**
+     * @param int $numberOfCharacters
+     * @return string
+     */
+    public function getSlug($numberOfCharacters = 150)
+    {
+        $title = $this->simpleXMLElement->ItemAttributes->Title[0];
+        $title = substr($title, 0, $numberOfCharacters - 1);
+        $title = trim($title);
+        $title = self::slugify($title);
+        return $title;
+    }
+
+    /**
+     * @return string
+     */
+    public function getStudio()
+    {
+        $studio = '';
+
+        if (isset($this->simpleXMLElement->ItemAttributes->Studio[0])) {
+            $studio =
+                (string)
+                    $this->simpleXMLElement->ItemAttributes->Studio[0];
+        }
+
+        return $studio;
+    }
+
+    /**
+     * @param int $numberOfCharacters
+     * @return bool|string
+     */
+    public function getTitle($numberOfCharacters = 255)
+    {
+        if (isset($this->simpleXMLElement->ItemAttributes->Title[0])) {
+            return
+                substr(
+                    trim($this->simpleXMLElement->ItemAttributes->Title[0]),
+                    0,
+                    $numberOfCharacters - 1
+                );
+        }
+        return '';
+    }
+
+    /**
+     * @return string
+     */
+    public function getUpc()
+    {
+        $upc = '';
+
+        if (isset($this->simpleXMLElement->ItemAttributes->UPC[0])) {
+            $upc =
+                (string)
+                    $this->simpleXMLElement->ItemAttributes->UPC[0];
+        }
+
+        return $upc;
+    }
+
+    /*
+     * =========================================================================
+     * IMAGES
+     * =========================================================================
+     */
+
+    /**
+     * @return array
+     */
+    public function getAllSmallImages()
+    {
+        $images = [];
+
+        foreach ($this->simpleXMLElement->ImageSets->ImageSet as $imageSet) {
+            $images[] = (string) $imageSet->SmallImage->URL;
+        }
+
+        return $images;
     }
 
     /**
      * @return array
      */
-    public function getAllImages()
+    public function getAllMediumImages()
     {
         $images = [];
-        foreach ($this->data->ImageSets->ImageSet as $imageSet) {
-            $images[] = (string) $imageSet->LargeImage->URL;
+
+        foreach ($this->simpleXMLElement->ImageSets->ImageSet as $imageSet) {
+            $images[] = (string) $imageSet->MediumImage->URL;
         }
+
         return $images;
     }
 
-    public function getTitle()
+    /**
+     * @return array
+     */
+    public function getAllLargeImages()
     {
-        if (isset($this->data->ItemAttributes->Title[0])) {
-            return substr(trim($this->data->ItemAttributes->Title[0]), 0, 254);
-        } else {
-            return '';
+        $images = [];
+
+        foreach ($this->simpleXMLElement->ImageSets->ImageSet as $imageSet) {
+            $images[] = (string) $imageSet->LargeImage->URL;
         }
+
+        return $images;
     }
 
     /**
-     * @param int $limit
      * @return string
      */
-    public function getDescription($limit = 5)
+    public function getSmallImage()
     {
-        if (isset($this->data->ItemAttributes->Feature)) {
-            $description = '';
-            $i = 1;
-            foreach ($this->data->ItemAttributes->Feature as $key => $feature) {
-                if ($i <= $limit) {
-                    $description .= '<li>' . substr($feature, 0, 100) . '</li>';
-                }
-                $i++;
-            }
-            return $description;
-        } else {
-            return '';
+        $smallImage = '';
+
+        if (isset($this->simpleXMLElement->SmallImage->URL[0])) {
+            $smallImage =
+                (string)
+                    $this->simpleXMLElement->SmallImage->URL[0];
         }
+
+        return $smallImage;
     }
 
-    public function getColor()
+    /**
+     * @return string
+     */
+    public function getMediumImage()
     {
-        return (string)($this->data->ItemAttributes->Color[0] ?? '');
-    }
+        $mediumImage = '';
 
-    public function getEAN()
-    {
-        return (string)($this->data->ItemAttributes->EAN[0] ?? '');
-    }
-
-    public function getModel()
-    {
-        return (string)($this->data->ItemAttributes->Model[0] ?? '');
-    }
-
-    public function getMPN()
-    {
-        return (string)($this->data->ItemAttributes->MPN[0] ?? '');
-    }
-
-    public function getProductGroup()
-    {
-        return (string)($this->data->ItemAttributes->ProductGroup[0] ?? '');
-    }
-
-    public function getPublisher()
-    {
-        return (string)($this->data->ItemAttributes->Publisher[0] ?? '');
-    }
-
-    public function getStudio()
-    {
-        return (string)($this->data->ItemAttributes->Studio[0] ?? '');
-    }
-
-    public function getUPC()
-    {
-        return (string)($this->data->ItemAttributes->UPC[0] ?? '');
-    }
-
-    public function getASIN()
-    {
-        return (string)($this->data->ASIN[0] ?? '');
-    }
-
-    public function getAmazonUrl()
-    {
-        $asin =  $this->getASIN();
-        $url = ($asin ? 'https://www.amazon.com/gp/product/' . $asin : '');
-        return $url;
-    }
-
-    public function getSlug()
-    {
-        return fromStrToUrl(trim(substr($this->data->ItemAttributes->Title[0], 0, 140)));
-    }
-
-    public function getFormattedUps()
-    {
-        $ean = $this->getEAN();
-        $mpn = $this->getMPN();
-        $upc = $this->getUPC();
-
-        if ($upc) {
-            return $upc;
-        } elseif ($ean) {
-            return $ean;
-        } elseif ($mpn) {
-            return $mpn;
-        } else {
-            return false;
+        if (isset($this->simpleXMLElement->MediumImage->URL[0])) {
+            $mediumImage =
+                (string)
+                    $this->simpleXMLElement->MediumImage->URL[0];
         }
+
+        return $mediumImage;
+    }
+
+    /**
+     * @return string
+     */
+    public function getLargeImage()
+    {
+        $largeImage = '';
+
+        if (isset($this->simpleXMLElement->LargeImage->URL[0])) {
+            $largeImage =
+                (string)
+                    $this->simpleXMLElement->LargeImage->URL[0];
+        }
+
+        return $largeImage;
+    }
+
+    /*
+     * =========================================================================
+     * HELPERS
+     * =========================================================================
+     */
+
+    /**
+     * @param string $text
+     * @return string
+     */
+    public static function slugify($text)
+    {
+        // replace non letter or digits by -
+        $text = preg_replace('~[^\pL\d]+~u', '-', $text);
+
+        // transliterate
+        $text = iconv('utf-8', 'us-ascii//TRANSLIT', $text);
+
+        // remove unwanted characters
+        $text = preg_replace('~[^-\w]+~', '', $text);
+
+        // trim
+        $text = trim($text, '-');
+
+        // remove duplicate -
+        $text = preg_replace('~-+~', '-', $text);
+
+        // lowercase
+        $text = strtolower($text);
+
+        if (empty($text)) {
+            return 'n-a';
+        }
+
+        return $text;
     }
 }
