@@ -41,10 +41,8 @@ class ProductProvider
     {
         $asin = '';
 
-        if (isset($this->simpleXMLElement->ItemAttributes->ASIN[0])) {
-            $asin =
-                (string)
-                    $this->simpleXMLElement->ItemAttributes->ASIN[0];
+        if (isset($this->simpleXMLElement->ASIN[0])) {
+            $asin = (string) $this->simpleXMLElement->ASIN[0];
         }
 
         return $asin;
